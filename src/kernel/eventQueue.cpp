@@ -10,6 +10,7 @@
 #include "libs/libs.h"
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <fmt/format.h>
 #include <limits>
@@ -351,7 +352,12 @@ int KYTY_SYSV_ABI KernelAddEvent(KernelEqueue eq, const KernelEqueueEvent& event
 		return KERNEL_ERROR_EBADF;
 	}
 
-	return owner->AddEvent(event);
+	const int cp_dbg_result = owner->AddEvent(event);
+	// CP debug (Club Penguin black-screen investigation): every event registration
+	LOGF("[CPDBG] add event eq=%" PRIu64 " (%s) filter=%d ident=0x%" PRIx64 " result=0x%08x\n",
+	     static_cast<uint64_t>(eq), owner->GetName().c_str(), static_cast<int>(event.event.filter),
+	     static_cast<uint64_t>(event.event.ident), static_cast<unsigned>(cp_dbg_result));
+	return cp_dbg_result;
 }
 
 int KYTY_SYSV_ABI KernelTriggerEvent(KernelEqueue eq, uintptr_t ident, int16_t filter,
@@ -361,7 +367,18 @@ int KYTY_SYSV_ABI KernelTriggerEvent(KernelEqueue eq, uintptr_t ident, int16_t f
 		return KERNEL_ERROR_EBADF;
 	}
 
-	return owner->TriggerEvent(ident, filter, trigger_data);
+	const int cp_dbg_result = owner->TriggerEvent(ident, filter, trigger_data);
+	{
+		// CP debug (Club Penguin black-screen investigation): event deliveries (first 40, then every 200th)
+		static std::atomic<uint64_t> s_cp_dbg_triggers {0};
+		const uint64_t               cp_dbg_n = ++s_cp_dbg_triggers;
+		if (cp_dbg_n <= 40 || cp_dbg_n % 200 == 0) {
+			LOGF("[CPDBG] trigger #%" PRIu64 " eq=%" PRIu64 " (%s) filter=%d ident=0x%" PRIx64 " result=0x%08x\n",
+			     cp_dbg_n, static_cast<uint64_t>(eq), owner->GetName().c_str(), static_cast<int>(filter),
+			     static_cast<uint64_t>(ident), static_cast<unsigned>(cp_dbg_result));
+		}
+	}
+	return cp_dbg_result;
 }
 
 int KYTY_SYSV_ABI KernelDeleteEvent(KernelEqueue eq, uintptr_t ident, int16_t filter) {

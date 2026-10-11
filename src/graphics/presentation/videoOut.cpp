@@ -1,5 +1,7 @@
 #include "graphics/presentation/videoOut.h"
 
+#include <atomic>
+
 #include "common/abi.h"
 #include "common/assert.h"
 #include "common/common.h"
@@ -1137,7 +1139,20 @@ void FlipQueue::Prepare(uint64_t request_id, Graphics::CommandBuffer& buffer) {
 	prepared->premultiplied_alpha = premultiplied_alpha;
 }
 
+// CP debug (Club Penguin black-screen investigation): log the first 20 events, then every 100th
+static bool CpDbgLog(std::atomic<uint64_t>& counter, uint64_t& n) {
+	n = ++counter;
+	return n <= 20 || n % 100 == 0;
+}
+
 void FlipQueue::Complete(uint64_t request_id) {
+	{
+		static std::atomic<uint64_t> s_cp_dbg_completes {0};
+		uint64_t                     cp_dbg_n = 0;
+		if (CpDbgLog(s_cp_dbg_completes, cp_dbg_n)) {
+			LOGF("[CPDBG] flip complete #%" PRIu64 " request=%" PRIu64 "\n", cp_dbg_n, request_id);
+		}
+	}
 	m_mutex.Lock();
 	auto request = std::find_if(m_requests.begin(), m_requests.end(),
 	                            [request_id](const auto& r) { return r.id == request_id; });
@@ -1581,6 +1596,14 @@ KYTY_SYSV_ABI int VideoOutSubmitFlip(int handle, int index, int flip_mode, int64
 	uint64_t  request_id = 0;
 	const int result     = ReserveFlipRequest(DriverState(), handle, index, flip_mode, flip_arg,
 	                                          FlipRequestSource::Cpu, request_id);
+	{
+		static std::atomic<uint64_t> s_cp_dbg_cpu_flips {0};
+		uint64_t                     cp_dbg_n = 0;
+		if (CpDbgLog(s_cp_dbg_cpu_flips, cp_dbg_n)) {
+			LOGF("[CPDBG] VideoOutSubmitFlip #%" PRIu64 " handle=%d index=%d mode=%d arg=%" PRId64 " result=0x%08x\n",
+			     cp_dbg_n, handle, index, flip_mode, flip_arg, static_cast<unsigned>(result));
+		}
+	}
 	if (result == VIDEO_OUT_ERROR_INVALID_FLIP_MODE) {
 		LOGF("\t unsupported flip_mode = %d\n", flip_mode);
 	}

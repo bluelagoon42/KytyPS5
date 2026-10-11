@@ -1,5 +1,7 @@
 #include "graphics/host_gpu/renderer/sync.h"
 
+#include <atomic>
+
 #include "common/assert.h"
 #include "common/common.h"
 #include "common/logging/log.h"
@@ -158,6 +160,15 @@ void WriteAtEndOfPipeWithInterrupt32(uint64_t submit_id, CommandBuffer& buffer,
 
 uint64_t PrepareVideoOutFlip(CommandBuffer& buffer, int handle, int index, int flip_mode,
                              int64_t flip_arg) {
+	{
+		// CP debug (Club Penguin black-screen investigation): GPU-side (end-of-pipe) flips
+		static std::atomic<uint64_t> s_cp_dbg_gpu_flips {0};
+		const uint64_t               cp_dbg_n = ++s_cp_dbg_gpu_flips;
+		if (cp_dbg_n <= 20 || cp_dbg_n % 100 == 0) {
+			LOGF("[CPDBG] gpu flip #%" PRIu64 " handle=%d index=%d mode=%d arg=%" PRId64 "\n", cp_dbg_n,
+			     handle, index, flip_mode, flip_arg);
+		}
+	}
 	for (;;) {
 		uint64_t   request_id = 0;
 		auto&      video_out  = buffer.GetContext().GetVideoOut();

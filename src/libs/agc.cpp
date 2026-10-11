@@ -1,5 +1,7 @@
 #include "libs/agc.h"
 
+#include <atomic>
+
 #include "common/assert.h"
 #include "common/emulatorConfig.h"
 #include "common/file.h"
@@ -4315,7 +4317,18 @@ struct TessellationDriverState {
 
 static TessellationDriverState g_tessellation_driver_state {};
 
+// CP debug (Club Penguin black-screen investigation): log the first 20 events, then every 100th
+static bool CpDbgLog(std::atomic<uint64_t>& counter, uint64_t& n) {
+	n = ++counter;
+	return n <= 20 || n % 100 == 0;
+}
+
 static void submit_dcb(uint32_t* dcb, uint32_t size_in_dwords) {
+	static std::atomic<uint64_t> s_cp_dbg_dcbs {0};
+	uint64_t                     cp_dbg_n = 0;
+	if (CpDbgLog(s_cp_dbg_dcbs, cp_dbg_n)) {
+		LOGF("[CPDBG] agc submit_dcb #%" PRIu64 " size=%" PRIu32 " dwords\n", cp_dbg_n, size_in_dwords);
+	}
 	GraphicsDbgDumpDcb("d", size_in_dwords, dcb);
 	EXIT_IF(g_renderer == nullptr);
 	g_renderer->GetGpu().Submit(std::span {dcb, size_in_dwords}, {});
