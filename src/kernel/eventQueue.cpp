@@ -197,8 +197,8 @@ int KernelEqueuePrivate::WaitForEvents(KernelEvent* ev, int num, uint32_t micros
 			m_cond_var.Wait(&m_mutex);
 		} else {
 			const auto external_wait = micros != 0 ? micros - elapsed : UINT32_MAX;
-			m_cond_var.WaitFor(&m_mutex,
-			                   has_timer ? std::min(external_wait, timer_wait) : external_wait);
+			m_cond_var.WaitForWithPoll(
+			    &m_mutex, has_timer ? std::min(external_wait, timer_wait) : external_wait);
 		}
 
 		elapsed = static_cast<uint32_t>(t.GetTimeS() * 1000000.0);

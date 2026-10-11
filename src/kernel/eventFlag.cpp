@@ -139,7 +139,7 @@ KernelEventFlagPrivate::Result KernelEventFlagPrivate::Wait(uint64_t bits, WaitM
 		if (infinitely) {
 			m_cond_var.Wait(&m_mutex);
 		} else {
-			m_cond_var.WaitFor(&m_mutex, micros - elapsed);
+			m_cond_var.WaitForWithPoll(&m_mutex, micros - elapsed);
 		}
 
 		m_waiting_threads--;

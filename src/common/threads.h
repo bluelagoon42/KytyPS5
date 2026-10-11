@@ -73,6 +73,11 @@ public:
 
 	void Wait(Mutex* mutex);
 	bool WaitFor(Mutex* mutex, uint32_t micros);
+	// Like WaitFor(), but a long wait returns after at most one poll slice (10 ms) and runs the
+	// wait poll callback, so a signal queued for a guest thread blocked here is dispatched promptly
+	// (special user APCs do not interrupt non-alertable waits). Callers must recheck their condition
+	// and remaining time in a loop.
+	bool WaitForWithPoll(Mutex* mutex, uint32_t micros);
 	void Signal();
 	void SignalAll();
 
