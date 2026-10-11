@@ -232,7 +232,7 @@ KernelSemaPrivate::Result KernelSemaPrivate::Wait(int need_count, uint32_t* ptr_
 		if (infinitely) {
 			m_cond_var.WaitFor(&m_mutex, SIGNAL_APC_POLL_MICROS);
 		} else {
-			m_cond_var.WaitFor(&m_mutex, micros - elapsed);
+			m_cond_var.WaitFor(&m_mutex, std::min(micros - elapsed, SIGNAL_APC_POLL_MICROS));
 		}
 
 		m_mutex.Unlock();
@@ -417,7 +417,7 @@ public:
 			SyncGuest();
 
 			if (timed_wait) {
-				m_cond_var.WaitFor(&m_mutex, *micros - elapsed);
+				m_cond_var.WaitFor(&m_mutex, std::min(*micros - elapsed, SIGNAL_APC_POLL_MICROS));
 			} else {
 				m_cond_var.WaitFor(&m_mutex, SIGNAL_APC_POLL_MICROS);
 			}

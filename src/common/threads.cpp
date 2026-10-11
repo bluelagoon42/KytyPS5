@@ -357,6 +357,22 @@ bool CondVar::WaitFor(Mutex* mutex, uint32_t micros) {
 	return ok;
 }
 
+bool CondVar::WaitForWithPoll(Mutex* mutex, uint32_t micros) {
+	constexpr uint32_t POLL_MICROS = 10000;
+
+	auto* callback = g_cond_wait_poll_callback;
+	if (callback == nullptr || micros <= POLL_MICROS) {
+		return WaitFor(mutex, micros);
+	}
+	if (WaitFor(mutex, POLL_MICROS)) {
+		return true;
+	}
+	mutex->Unlock();
+	callback();
+	mutex->Lock();
+	return false;
+}
+
 void CondVar::Signal() {
 #ifdef KYTY_WIN_CS
 	static auto func = ResolveWakeConditionVariable();
